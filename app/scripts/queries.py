@@ -232,3 +232,47 @@ def query_builder(name):
             FROM activity_totals at
             CROSS JOIN latest_followers lf
     """
+    elif name == "last_x_posts":
+        return """
+            WITH last_x_posts AS (
+                SELECT
+                    Id,
+                    post_timestamp,
+                    short_caption,
+                    trial_reel
+                FROM post_metadata
+                ORDER BY 
+                    post_timestamp DESC
+                LIMIT 15
+            ), 
+            latest_post_activity AS (
+                SELECT DISTINCT ON (a.id)               
+                            a.id,                   
+                            a.timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York'  AS localized_timestamp,
+                            a.views,
+                            a.views - LAG(a.views, 1) OVER (ORDER BY a.timestamp) AS delta_views,
+                            a.reach,
+                            a.reach - LAG(a.reach, 1) OVER (ORDER BY a.timestamp) AS delta_reach,
+                            a.likes,                       
+                            a.likes - LAG(a.likes, 1) OVER (ORDER BY a.timestamp) AS delta_likes,
+                            a.comments,
+                            a.comments - LAG(a.comments, 1) OVER (ORDER BY a.timestamp) AS delta_comments,
+                            a.saves,
+                            a.saves - LAG(a.saves, 1) OVER (ORDER BY a.timestamp) AS delta_saves,
+                            a.shares,
+                            a.shares - LAG(a.shares, 1) OVER (ORDER BY a.timestamp) AS delta_shares
+                        FROM
+                            post_activity a
+                    LEFT JOIN post_metadata b
+                    ON a.id = b.id
+                        ORDER BY a.id,
+                            a.timestamp DESC
+            )
+            SELECT
+            c.*,
+            d.*
+            FROM last_x_posts c
+            LEFT JOIN latest_post_activity d
+            ON c.id=d.id
+            ;
+        """

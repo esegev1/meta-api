@@ -27,6 +27,7 @@ from app.services.database import DBService
 # Load environment variables
 VERIFY_TOKEN = os.getenv('META_VERIFY_TOKEN')
 APP_SECRET = os.getenv('META_SECRET_KEY')
+PORT = os.getenv('PORT')
 
 # Debug: Check if loaded
 print("="*60)
@@ -303,4 +304,4 @@ def query_exec_summary_data():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=3000, debug=True)
+    app.run(host='0.0.0.0', port=PORT, debug=True)
