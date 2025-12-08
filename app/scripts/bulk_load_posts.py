@@ -1,9 +1,21 @@
 import sys
+import os
 from pathlib import Path
 import time
 
 # Add project root to sys.path
 # sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
+# --- Path Injection for Cron Jobs ---
+# Calculate the path to the project root (meta-api) directory.
+# The script is 3 levels deep: /scripts/ -> /app/ -> /meta-api/
+current_dir = os.path.dirname(os.path.abspath(__file__))
+app_dir = os.path.dirname(current_dir)
+project_root = os.path.dirname(app_dir)
+
+# Add the project root to the system path, allowing absolute imports like 'from app...'
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from app.scripts.queries import query_builder
 from app.services.meta_api import fetch_meta_data_post
