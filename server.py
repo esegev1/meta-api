@@ -1,8 +1,17 @@
-from flask import Flask, request
-app = Flask('main')
+from flask import Flask, request, jsonify
+app = Flask(__name__)
 
 from flask_cors import CORS
 CORS(app)
+
+# Only allow your React frontend DO THIS FOR DEPLOYMENT 
+# CORS(app, resources={
+#     r"/*": {
+#         "origins": ["http://localhost:5173", "https://yourdomain.com"],
+#         "methods": ["GET", "POST", "PUT", "DELETE"],
+#         "allow_headers": ["Content-Type"]
+#     }
+# })
 
 # ADD THIS - Load environment variables from .env file
 from dotenv import load_dotenv
@@ -13,6 +22,7 @@ import hashlib
 import hmac
 
 from app.services.webhook import *
+from app.services.database import DBService
 
 # Load environment variables
 VERIFY_TOKEN = os.getenv('META_VERIFY_TOKEN')
@@ -109,61 +119,188 @@ def webhook_receive():
 
 
 
+
+
+# Initialize the service (do this once, maybe in app setup)
+db_service = DBService()
+
 # Posts API routes
-@app.route("/posts", methods=['GET'])  # Fixed from @app.get()
-def index():
-    connection.rollback()
-    cursor.execute("SELECT * FROM post_metadata")
-    return cursor.fetchall()
+# @app.route("/posts", methods=['GET'])
+# def query_all_posts():
+#     return db_service.get_all_posts()
 
-@app.route("/posts/<id>", methods=['GET'])  # Fixed from @app.get()
-def show():
-    connection.rollback()
-    cursor.execute("SELECT * FROM post_metadata WHERE id=%s", [id])
-    return cursor.fetchall()
+# @app.route("/posts/<id>", methods=['GET'])
+# def query_post_by_id(id):
+#     return db_service.get_post_by_id(id)
 
-@app.route("/activity", methods=['GET'])  # Fixed from @app.get()
-def index():
-    connection.rollback()
-    cursor.execute("SELECT * FROM post_activity")
-    return cursor.fetchall()
+@app.route("/postlist", methods=['GET'])
+def query_post_list():
+    conn = None
 
-@app.route("/activity/<id>", methods=['GET'])  # Fixed from @app.get()
-def index():
-    connection.rollback()
-    cursor.execute("SELECT * FROM post_activity WHERE id=%s", [id])
-    return cursor.fetchall()
+    try:
+        # 1. ACQUIRE CONNECTION
+        conn = db_service.get_db_connection()
+        
+        # 2. PASS CONNECTION TO SERVICE METHOD
+        data = db_service.get_post_list(conn)
+        
+        # 3. COMMIT (if applicable, though SELECTs don't need it)
+        conn.commit() 
+        
+        # 4. RETURN RESPONSE
+        return jsonify(data)
+    
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Database error during request: {e}")
+        # Rollback any pending transactions on failure
+        if conn:
+            conn.rollback()
+        # Re-raise the error to let Flask handle the 500 status
+        raise
+        
+    finally:
+        # 5. ENSURE CONNECTION IS CLOSED
+        if conn:
+            conn.close() # <--- THIS IS THE CRITICAL FIX
 
 
+@app.route("/activity", methods=['GET'])
+def query_all_activity():
+    conn = None
 
+    try:
+        # 1. ACQUIRE CONNECTION
+        conn = db_service.get_db_connection()
+        
+        # 2. PASS CONNECTION TO SERVICE METHOD
+        data = db_service.get_all_activity(conn)
+        
+        # 3. COMMIT (if applicable, though SELECTs don't need it)
+        conn.commit() 
+        
+        # 4. RETURN RESPONSE
+        return jsonify(data)
+    
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Database error during request: {e}")
+        # Rollback any pending transactions on failure
+        if conn:
+            conn.rollback()
+        # Re-raise the error to let Flask handle the 500 status
+        raise
+        
+    finally:
+        # 5. ENSURE CONNECTION IS CLOSED
+        if conn:
+            conn.close() # <--- THIS IS THE CRITICAL FIX
 
+@app.route("/activity/latest", methods=['GET'])
+def query_latest_activity():
+    conn = None
 
+    try:
+        # 1. ACQUIRE CONNECTION
+        conn = db_service.get_db_connection()
+        
+        # 2. PASS CONNECTION TO SERVICE METHOD
+        data = db_service.get_latest_activity(conn)
+        
+        # 3. COMMIT (if applicable, though SELECTs don't need it)
+        conn.commit() 
+        
+        # 4. RETURN RESPONSE
+        return jsonify(data)
+    
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Database error during request: {e}")
+        # Rollback any pending transactions on failure
+        if conn:
+            conn.rollback()
+        # Re-raise the error to let Flask handle the 500 status
+        raise
+        
+    finally:
+        # 5. ENSURE CONNECTION IS CLOSED
+        if conn:
+            conn.close() # <--- THIS IS THE CRITICAL FIX
 
+@app.route("/activity/<id>", methods=['GET'])
+def query_activity_by_id(id):
+    conn = None
 
+    try:
+        # 1. ACQUIRE CONNECTION
+        conn = db_service.get_db_connection()
+        
+        # 2. PASS CONNECTION TO SERVICE METHOD
+        print("id: ", id)
+        data = db_service.get_activity_by_id(conn, id)
+        
+        # 3. COMMIT (if applicable, though SELECTs don't need it)
+        conn.commit() 
+        
+        # 4. RETURN RESPONSE
+        return jsonify(data)
+    
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Database error during request: {e}")
+        # Rollback any pending transactions on failure
+        if conn:
+            conn.rollback()
+        # Re-raise the error to let Flask handle the 500 status
+        raise
+        
+    finally:
+        # 5. ENSURE CONNECTION IS CLOSED
+        if conn:
+            conn.close() # <--- THIS IS THE CRITICAL FIX
+    # return db_service.get_activity_by_id(id)
 
-# @app.route("/posts/", methods=['POST'])  # Fixed from @app.post()
-# def create():
-#     cursor.execute("INSERT INTO post_metadata (id, post_timestamp, caption, media_type) VALUES ('18116623174560971', '2025-11-21T16:04:49+0000', 'Artichoke and spinach potato gratin', 'VIDEO')")
-#     connection.commit()
-#     return {
-#         "success": True
-#     }
+# @app.route("/followers", methods=['GET'])
+# def query_follower_counts():
+#     return db_service.get_follower_counts()
 
-# @app.route("/posts/<id>", methods=['DELETE'])  # Fixed from @app.delete()
-# def delete(id):
-#     cursor.execute("DELETE FROM post_metadata WHERE id = %s", [id])
-#     connection.commit()
-#     return {
-#         "success": True
-#     }
+# @app.route("/followers/now", methods=['GET'])
+# def query_latest_followers():
+#     return db_service.get_latest_followers()
 
-# @app.route("/posts/<id>", methods=['PUT'])  # Fixed from @app.put()
-# def update(id):
-#     cursor.execute("UPDATE post_metadata SET caption = %s WHERE id = %s", ('testing...1...2', id))
-#     connection.commit()
-#     return {
-#         "success": True
-#     }
+@app.route("/execsummary", methods=['GET'])
+def query_exec_summary_data():
+    conn = None
+
+    try:
+        # 1. ACQUIRE CONNECTION
+        conn = db_service.get_db_connection()
+        
+        # 2. PASS CONNECTION TO SERVICE METHOD
+        data = db_service.get_exec_summary_data(conn)
+        
+        # 3. COMMIT (if applicable, though SELECTs don't need it)
+        conn.commit() 
+        
+        # 4. RETURN RESPONSE
+        return jsonify(data)
+    
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Database error during request: {e}")
+        # Rollback any pending transactions on failure
+        if conn:
+            conn.rollback()
+        # Re-raise the error to let Flask handle the 500 status
+        raise
+        
+    finally:
+        # 5. ENSURE CONNECTION IS CLOSED
+        if conn:
+            conn.close() # <--- THIS IS THE CRITICAL FIX
+
+    # return db_service.get_exec_summary_data()
+
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=3000, debug=True)

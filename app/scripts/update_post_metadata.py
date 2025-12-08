@@ -2,10 +2,10 @@ import sys
 import os
 
 # Get the project root directory (meta-api/)
-project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, project_root)
+# project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# sys.path.insert(0, project_root)
 
-from .queries import query_builder
+from app.scripts.queries import query_builder
 from app.services.meta_api import fetch_meta_data_post
 
 import psycopg2
@@ -39,4 +39,4 @@ def update_post_metadata(post_id):
     cursor.close()
     connection.close() 
 
-# update_post_metadata("18084894043987260")
+# update_post_metadata("17953889028024104")

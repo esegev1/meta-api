@@ -3,9 +3,9 @@ from pathlib import Path
 import time
 
 # Add project root to sys.path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+# sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from queries import query_builder
+from app.scripts.queries import query_builder
 from app.services.meta_api import fetch_meta_data_post
 
 from datetime import datetime, timezone
@@ -23,7 +23,7 @@ def update_follower_counts():
     print(f"Run timestamp: {datetime.now()}")
 
     results = fetch_meta_data_post('', 'follower_counts_update')
-    print("Results: ", results)
+    print("followers: ", results)
     values = [
         results["id"], 
         results["followers_count"]
@@ -36,4 +36,4 @@ def update_follower_counts():
     cursor.close()
     connection.close() 
 
-# update_follower_counts()
+update_follower_counts()

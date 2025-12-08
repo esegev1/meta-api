@@ -3,9 +3,9 @@ from pathlib import Path
 import time
 
 # Add project root to sys.path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+# sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from queries import query_builder
+from app.scripts.queries import query_builder
 from app.services.meta_api import fetch_meta_data_post
 
 from datetime import datetime, timezone
@@ -22,7 +22,7 @@ def bulk_load_posts():
     # feetch last 200 posts in case you need to reset post_metadata table
     print(f"Run timestamp: {datetime.now()}")
 
-    results = fetch_meta_data_post('',"post_metadata_rebuild",200)
+    results = fetch_meta_data_post('',"post_metadata_rebuild",230)
 
     rows = []
         

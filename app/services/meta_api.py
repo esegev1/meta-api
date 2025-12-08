@@ -12,13 +12,11 @@ ACCT_ID = os.getenv('META_IG_ACCT_ID');
 
 BASE_URL = "https://graph.facebook.com/v24.0"
 
-
 def fetch_meta_data_post(id, type, post_count=10):
     """
      Call Meta API to fetch data
      Args: edge (media or insights)
     """
-
     # Dict withe params tied to the edge name, this should be changed to named 
     # by use case but needs clean solution for edge variable
     requestDict = {
@@ -83,7 +81,6 @@ def fetch_meta_data_post(id, type, post_count=10):
         # }
     }
 
-    
     edge=requestDict[type]["edge"]
     url = f"{BASE_URL}/{id if id!='' else ACCT_ID}{edge}?"
     params = requestDict[type]["params"]
