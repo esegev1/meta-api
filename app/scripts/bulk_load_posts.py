@@ -53,8 +53,8 @@ def bulk_load_posts():
         cursor = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
         query = query_builder("populate_post_metadata")
         psycopg2.extras.execute_batch(cursor, query, rows)
-        get_db_connection().commit()
+        conn.commit()
         cursor.close()
-        get_db_connection().close() 
+        conn.close() 
 
 bulk_load_posts()

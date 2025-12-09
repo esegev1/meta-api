@@ -78,9 +78,9 @@ def update_post_activity(update_type="rapid"):
 
         update_query = query_builder("post_activity")
         psycopg2.extras.execute_batch(cursor, update_query, rows)
-        get_db_connection().commit()
+        conn.commit()
         cursor.close()
-        get_db_connection().close() 
+        conn.close() 
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
