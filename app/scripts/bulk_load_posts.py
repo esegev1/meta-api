@@ -23,12 +23,11 @@ from app.services.meta_api import fetch_meta_data_post
 from datetime import datetime, timezone
 
 import psycopg2
-connection = psycopg2.connect(
-    database="meta_api_data"
-)
-
 import psycopg2.extras
-cursor = connection.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+
+def get_db_connection():
+    db_url = os.getenv("DATABASE_URL")
+    return psycopg2.connect(db_url)
 
 def bulk_load_posts():
     # feetch last 200 posts in case you need to reset post_metadata table
@@ -37,8 +36,7 @@ def bulk_load_posts():
     results = fetch_meta_data_post('',"post_metadata_rebuild",230)
 
     rows = []
-        
-    for result in results:
+    for result in results[0]:
         # print("result: ", result)
 
         rows.append([
@@ -51,10 +49,12 @@ def bulk_load_posts():
             not result["is_shared_to_feed"] if "is_shared_to_feed" in result else True,
         ])
 
-    update_query = query_builder("populate_post_metadata")
-    psycopg2.extras.execute_batch(cursor, update_query, rows)
-    connection.commit()
-    cursor.close()
-    connection.close() 
+    with get_db_connection() as conn:
+        cursor = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+        query = query_builder("populate_post_metadata")
+        psycopg2.extras.execute_batch(cursor, query, rows)
+        get_db_connection().commit()
+        cursor.close()
+        get_db_connection().close() 
 
 # bulk_load_posts()

@@ -118,11 +118,12 @@ def query_builder(name):
             id,
             post_timestamp,
             media_type,
+            media_product_type,
             short_caption,
             caption,
             trial_reel
         )
-        VALUES (%s, %s , %s , %s , %s, %s )
+        VALUES (%s, %s , %s , %s , %s, %s, %s )
         ON CONFLICT (id) DO UPDATE
         SET post_timestamp = EXCLUDED.post_timestamp,
             media_type = EXCLUDED.media_type,
@@ -150,6 +151,7 @@ def query_builder(name):
         ON CONFLICT (id) DO UPDATE
         SET post_timestamp = EXCLUDED.post_timestamp,
             media_type = EXCLUDED.media_type,
+            media_product_type = EXCLUDED.media_product_type,
             short_caption = EXCLUDED.short_caption,
             caption = EXCLUDED.caption,
             trial_reel = EXCLUDED.trial_reel

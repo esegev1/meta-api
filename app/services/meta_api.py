@@ -22,7 +22,7 @@ def fetch_meta_data_post(id, type, post_count=10):
             "edge" : "",
             "params" : {
                 "access_token": ACCESS_TOKEN,
-                "fields": "id,timestamp,media_product_type,is_shared_to_feed,caption"
+                "fields": "id,timestamp,media_type,media_product_type,is_shared_to_feed,caption"
 
             }
             

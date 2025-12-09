@@ -1,9 +1,8 @@
 import sys
 import os
+from pathlib import Path
+import time
 
-# Get the project root directory (meta-api/)
-# project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# sys.path.insert(0, project_root)
 
 # --- Path Injection for Cron Jobs ---
 # Calculate the path to the project root (meta-api) directory.
@@ -19,35 +18,44 @@ if project_root not in sys.path:
 from app.scripts.queries import query_builder
 from app.services.meta_api import fetch_meta_data_post
 
-import psycopg2
-connection = psycopg2.connect(
-    database="meta_api_data"
-)
+from datetime import datetime, timezone
 
+import psycopg2
 import psycopg2.extras
-cursor = connection.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+
+def get_db_connection():
+    db_url = os.getenv("DATABASE_URL")
+    return psycopg2.connect(db_url)
 
 def update_post_metadata(post_id):
+    print(f"Run timestamp: {datetime.now()}")
     print(f"Fetching metadata for post: {post_id}")
-    post_metadata = fetch_meta_data_post(post_id, 'new_post_data')
-    print("post_metadata: ", post_metadata)
-    print(f"Type: {type(post_metadata)}, Length: {len(post_metadata) if post_metadata else 0}")
+    
+    results = fetch_meta_data_post(post_id, 'new_post_data')
+    print("post metadata: ", results)
 
-    caption = post_metadata[0].get("caption") or "" #to handle None
-    values =[
-            post_metadata[0]["id"],
-            post_metadata[0]["timestamp"],
-            post_metadata[0]["media_type"],
-            caption[:50],
+    if len(results) == 0:
+        print(f"No data found for post: {post_id}, exiting")
+        return f"{post_id} skipped, no data"
+
+    caption = results[0].get("caption") or "" #to handle None
+    values =[[
+            results[0]["id"],
+            results[0]["timestamp"],
+            results[0]["media_type"],
+            results[0]["media_product_type"],
+            caption[:30],
             caption,
-            post_metadata[0]["is_shared_to_feed"]
-        ]
-    
-    query=query_builder('new_post_data')
-    
-    cursor.execute(query, values)
-    connection.commit()
-    cursor.close()
-    connection.close() 
+            results[0]["is_shared_to_feed"]
+        ]]
+    # print("values: ", values)
 
-# update_post_metadata("17841405389209828")
+    with get_db_connection() as conn:
+        cursor = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+        
+        query = query_builder("new_post_data")
+        psycopg2.extras.execute_batch(cursor, query, values)
+        conn.commit()
+        cursor.close()
+
+update_post_metadata("18104977885591003")

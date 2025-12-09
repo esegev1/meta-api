@@ -45,7 +45,7 @@ def update_post_activity(update_type="rapid"):
             media_product_type=post["media_product_type"]
 
             results = fetch_meta_data_post(id, 'post_activity_data_'+media_product_type)
-            print(f"post {id} data: ", results)
+            print(f"post {id} results: ", results)
             
             #if no data comes back go to next post
             if len(results) == 0:
@@ -53,12 +53,12 @@ def update_post_activity(update_type="rapid"):
 
             flattened_data = {}
             
-            for result in results:
+            for result in results[0]:
                 # print("result: ", result)
                 flattened_data[result["name"]] = result["values"][0]["value"]
 
 
-            print(f"flattened_data: {flattened_data}")
+            # print(f"flattened_data: {flattened_data}")
 
             rows.append([
                 id,
