@@ -80,7 +80,6 @@ def update_post_activity(update_type="rapid"):
         psycopg2.extras.execute_batch(cursor, update_query, rows)
         conn.commit()
         cursor.close()
-        conn.close() 
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:

@@ -55,6 +55,5 @@ def bulk_load_posts():
         psycopg2.extras.execute_batch(cursor, query, rows)
         conn.commit()
         cursor.close()
-        conn.close() 
 
 bulk_load_posts()
