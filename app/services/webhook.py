@@ -10,16 +10,16 @@ import json
 from app.scripts.update_post_metadata import *
 
 import psycopg2
-connection = psycopg2.connect(
-    database="meta_api_data"
-)
-
 import psycopg2.extras
-cursor = connection.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
 
 # Load environment variables
 VERIFY_TOKEN = os.getenv('META_VERIFY_TOKEN')
 APP_SECRET = os.getenv('META_SECRET_KEY')
+
+def get_db_connection():
+    db_url = os.getenv("DATABASE_URL")
+    return psycopg2.connect(db_url)
+
 
 def webhook_processing(request):
     print('\n' + '='*60)

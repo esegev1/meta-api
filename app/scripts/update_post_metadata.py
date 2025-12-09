@@ -58,4 +58,4 @@ def update_post_metadata(post_id):
         conn.commit()
         cursor.close()
 
-update_post_metadata("18104977885591003")
+# update_post_metadata("18104977885591003")
