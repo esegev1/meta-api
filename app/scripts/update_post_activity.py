@@ -28,7 +28,7 @@ def get_db_connection():
 
 def update_post_activity(update_type="rapid"):
     # fetch all posts from last 48 hours
-    print(f"Run timestamp: {datetime.now()}")
+    print(f"🟢 Run timestamp: {datetime.now()}")
     values = ["48 hours", "1 second"] if update_type=='rapid' else ["2 months", "48 hours"]
     
     with get_db_connection() as conn:

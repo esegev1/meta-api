@@ -28,7 +28,7 @@ def get_db_connection():
     return psycopg2.connect(db_url)
 
 def update_post_metadata(post_id):
-    print(f"Run timestamp: {datetime.now()}")
+    print(f"🟢 Run timestamp: {datetime.now()}")
     print(f"Fetching metadata for post: {post_id}")
     
     results = fetch_meta_data_post(post_id, 'new_post_data')

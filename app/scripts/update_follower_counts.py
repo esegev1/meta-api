@@ -29,7 +29,7 @@ def get_db_connection():
 
 
 def update_follower_counts():
-    print(f"Run timestamp: {datetime.now()}")
+    print(f"🟢 Run timestamp: {datetime.now()}")
     
     results = fetch_meta_data_post('', 'follower_counts_update')
     print("followers: ", results)

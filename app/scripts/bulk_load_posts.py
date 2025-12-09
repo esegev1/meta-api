@@ -31,7 +31,7 @@ def get_db_connection():
 
 def bulk_load_posts():
     # feetch last 200 posts in case you need to reset post_metadata table
-    print(f"Run timestamp: {datetime.now()}")
+    print(f"🟢 Run timestamp: {datetime.now()}")
 
     results = fetch_meta_data_post('',"post_metadata_rebuild",230)
 
@@ -57,4 +57,4 @@ def bulk_load_posts():
         cursor.close()
         get_db_connection().close() 
 
-# bulk_load_posts()
+bulk_load_posts()

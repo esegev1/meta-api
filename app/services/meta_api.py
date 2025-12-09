@@ -114,17 +114,17 @@ def fetch_meta_data_post(id, type, post_count=10):
             
             if attempt == 2:
                 # Last attempt  
-                print(f"✗ Post {id} failed after 3 tries: {e}")
+                print(f"❌ Post {id} failed after 3 tries: {e}")
                 break
             elif meta_error_code == 4 or meta_error_code == 17:
-                print(f"✗ You hit rate limits, try again later")
+                print(f"❌ You hit rate limits, try again later")
                 break
             elif meta_error_code == 100:
-                print(f"✗ That post id does not exist")
+                print(f"❌ That post id does not exist")
                 break
             else:
                 print(f"error language: {error_data.get('error', {})}")
-                print(f"✗ Post {id} failed with code: {meta_error_code}, error msg: {e}")
+                print(f"❌ Post {id} failed with code: {meta_error_code}, error msg: {e}")
                 break
 
     print("results data: ", results)
