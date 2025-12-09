@@ -20,8 +20,10 @@ class DBService:
     def get_db_connection(self):
         """Creates and returns a fresh connection object"""
         # Connection details here (use os.getenv in production)
+        DATABASE_URL = os.getenv('DATABASE_URL')
+
         return psycopg2.connect(
-            database='meta_api_data',
+            DATABASE_URL,
             cursor_factory=RealDictCursor
         )
     
