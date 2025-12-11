@@ -65,12 +65,13 @@ def homepage():
 
 @app.route('/webhook', methods=['GET'])
 def webhook_verify():
+    print("webhook trigger")
     """Webhook verification for Meta"""
     mode = request.args.get('hub.mode')
     token = request.args.get('hub.verify_token')
     challenge = request.args.get('hub.challenge')
     
-    print(f'🔔 Webhook verification attempt: mode={mode}, token_match={token == VERIFY_TOKEN}')
+    print(f'🔔 Webhook verification attempt: mode={mode}, token={token}, token_match={token == VERIFY_TOKEN}')
     
     if mode == 'subscribe' and token == VERIFY_TOKEN:
         print('✓ Webhook verification successful')
@@ -126,6 +127,7 @@ def query_activity_by_id(conn, id):
 @with_db_connection(db_service)
 def query_exec_summary_data(conn):
     """Get executive summary data"""
+    print('execsummary')
     data = db_service.get_exec_summary_data(conn)
     return jsonify(data)
 

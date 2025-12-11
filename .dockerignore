@@ -1,0 +1,15 @@
+# .dockerignore
+
+# Virtual Environment
+meta-api/
+
+# Operating System files
+.DS_Store
+.env
+
+# Build Artifacts
+*.pyc
+__pycache__
+
+# Logs and other files not needed in the container
+*.log

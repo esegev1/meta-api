@@ -1,0 +1,75 @@
+services:
+  # -----------------------------------------------------------------
+  # 1. API Service (meta-api)
+  # -----------------------------------------------------------------
+  meta-api:
+    # Build the image using the Dockerfile in the current directory
+    build: . 
+    
+    # Load environment variables (including DATABASE_URL) from the .env file
+    env_file:
+      - .env 
+      
+    # Map the external host port (3001) to the internal container port (3001)
+    ports:
+      - "3001:3001"
+
+    # 🚨 GUNICORN STARTUP COMMAND (INTERNAL LISTENING) - Necessary Addition
+    command: gunicorn --bind 0.0.0.0:3001 server:app --workers 4 --timeout 120 --access-logfile - --error-logfile -
+
+      
+    # 🚨 CRITICAL: Tells Docker Compose to wait for the 'db' service to start
+    #depends_on:
+    #  - db
+      
+    # Ensures container restarts automatically if it crashes or the host reboots
+    restart: always 
+ 
+    # This enables `host.docker.internal` so that postgres outside of docker, on Pi can be reached   
+    extra_hosts:
+      - "host.docker.internal:host-gateway"    
+    
+    # Give the container a friendly name
+    container_name: meta_api_server
+
+  # -----------------------------------------------------------------
+  # 2. SCHEDULER SERVICE (Ofelia)
+  # -----------------------------------------------------------------
+  scheduler: 
+    image: mcuadros/ofelia:latest
+    container_name: ofelia_scheduler
+  
+    command: daemon --docker
+ 
+    # Allows ofelia to comm with the Docker daemon to execute commands
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./app/logs:/logs
+
+    user: "1000:990"
+    
+    # Define the cron jobs here using Ofelia's environment variables
+    labels:
+      # Rapid Activity Update (Every 15 minutes)
+      ofelia.job-exec.rapid.schedule: "0 0,15,30,45 * * * *"
+      ofelia.job-exec.rapid.command: "python3 /usr/src/app/app/scripts/update_post_activity.py rapid"
+      ofelia.job-exec.rapid.container: "meta_api_server"
+      ofelia.job-exec.rapid.log: "/logs/rapid.log"
+      ofelia.job-exec.rapid.stdout: "false"
+      
+      # Daily Activity Update (5 minutes past every 8th hour)
+      ofelia.job-exec.daily.schedule: "0 5 */8 * * *"
+      ofelia.job-exec.daily.command: "python3 /usr/src/app/app/scripts/update_post_activity.py daily"
+      ofelia.job-exec.daily.container: "meta_api_server"
+      ofelia.job-exec.daily.log: "/app/logs/daily.log"
+      ofelia.job-exec.daily.stdout: "false"
+      
+      # Follower Counts Update (20 minutes past every 6th hour)
+      ofelia.job-exec.followers.schedule: "0 20 */6 * * *"
+      ofelia.job-exec.followers.command: "python3 /usr/src/app/app/scripts/update_follower_counts.py"
+      ofelia.job-exec.followers.container: "meta_api_server"
+      ofelia.job-exec.followers.log: "/logs/followers.log"
+      ofelia.job-exec.followers.stdout: "false"
+      
+    # Ofelia must not restart if it fails (optional, but standard for schedulers)
+    restart: always
