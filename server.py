@@ -1,307 +1,240 @@
 from flask import Flask, request, jsonify
-app = Flask(__name__)
-
 from flask_cors import CORS
-CORS(app)
-
-# Only allow your React frontend DO THIS FOR DEPLOYMENT 
-# CORS(app, resources={
-#     r"/*": {
-#         "origins": ["http://localhost:5173", "https://yourdomain.com"],
-#         "methods": ["GET", "POST", "PUT", "DELETE"],
-#         "allow_headers": ["Content-Type"]
-#     }
-# })
-
-# ADD THIS - Load environment variables from .env file
 from dotenv import load_dotenv
+import os
+
+# Load environment variables
 load_dotenv()
 
-import os
-import hashlib
-import hmac
+# Initialize Flask app
+app = Flask(__name__)
 
-from app.services.webhook import *
+# CORS Configuration - Allow credentials and specific origins
+CORS(app, resources={
+    r"/*": {
+        "origins": ["http://localhost:5173", "https://dash.segsy.xyz"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True
+    }
+})
+
+# Import services
+from app.services.webhook import webhook_processing
 from app.services.database import DBService
+from app.services.auth import AuthService, token_required
+from app.utils.db_helpers import with_db_connection
 
 # Load environment variables
 VERIFY_TOKEN = os.getenv('META_VERIFY_TOKEN')
 APP_SECRET = os.getenv('META_SECRET_KEY')
 PORT = os.getenv('PORT')
 
-# Debug: Check if loaded
+# Startup logging - simplified and secure
 print("="*60)
-print("🔍 ENVIRONMENT VARIABLES:")
-print(f"VERIFY_TOKEN: {VERIFY_TOKEN}")
-print(f"APP_SECRET: {APP_SECRET[:10] if APP_SECRET else None}... (loaded: {bool(APP_SECRET)})")
+print("🚀 SERVER STARTING")
+print(f"✓ VERIFY_TOKEN loaded: {bool(VERIFY_TOKEN)}")
+print(f"✓ APP_SECRET loaded: {bool(APP_SECRET)}")
+print(f"✓ PORT: {PORT}")
 print("="*60)
 
-@app.before_request
-def log_all_requests():
-    print(f'\n>>> Incoming: {request.method} {request.full_path}')
-    print(f'>>> From: {request.remote_addr}')
-    print('\n' + '='*60)
-    print(f'📥 REQUEST RECEIVED')
-    print(f'Method: {request.method}')
-    print(f'Path: {request.path}')
-    print(f'Full Path: {request.full_path}')
-    print(f'URL: {request.url}')
-    print(f'Remote Address: {request.remote_addr}')
-    print(f'Args: {dict(request.args)}')
-    print('='*60 + '\n')
+# Initialize database service
+db_service = DBService()
 
-# Homepage
-@app.route("/", methods=['GET'])  # Fixed from @app.get()
+# ============================================
+# REQUEST LOGGING (only in debug mode)
+# ============================================
+if os.getenv('FLASK_DEBUG', 'False') == 'True':
+    @app.before_request
+    def log_requests():
+        print(f'📥 {request.method} {request.path} from {request.remote_addr}')
+
+# ============================================
+# PUBLIC ROUTES
+# ============================================
+
+@app.route("/", methods=['GET'])
+@token_required
 def homepage():
-    return 'hello'
+    """Health check endpoint"""
+    return jsonify({'status': 'ok', 'message': 'API is running'})
 
-# Webhook verification (GET)
+# ============================================
+# WEBHOOK ROUTES
+# ============================================
+
 @app.route('/webhook', methods=['GET'])
 def webhook_verify():
-    print('=' * 50)
-    print('WEBHOOK GET REQUEST')
-    print('=' * 50)
-    
+    """Webhook verification for Meta"""
     mode = request.args.get('hub.mode')
     token = request.args.get('hub.verify_token')
     challenge = request.args.get('hub.challenge')
     
-    print(f"Mode: '{mode}'")
-    print(f"Token received: '{token}'")
-    print(f"VERIFY_TOKEN expected: '{VERIFY_TOKEN}'")
-    print(f"Match: {token == VERIFY_TOKEN}")
+    print(f'🔔 Webhook verification attempt: mode={mode}, token_match={token == VERIFY_TOKEN}')
     
     if mode == 'subscribe' and token == VERIFY_TOKEN:
-        print('✓ SUCCESS - Returning challenge')
+        print('✓ Webhook verification successful')
         return challenge, 200
-    else:
-        print('✗ FAILED')
-        if mode != 'subscribe':
-            print(f"  - Mode is wrong: '{mode}' (expected 'subscribe')")
-        if token != VERIFY_TOKEN:
-            print(f"  - Token mismatch!")
-            print(f"    Got: '{token}'")
-            print(f"    Expected: '{VERIFY_TOKEN}'")
-        return 'Forbidden', 403
+    
+    print('✗ Webhook verification failed')
+    return 'Forbidden', 403
 
-# Webhook events (POST)
 @app.route('/webhook', methods=['POST'])
 def webhook_receive():
+    """Webhook event receiver from Meta"""
     webhook_processing(request)
-    # print('\n' + '='*60)
-    # print('🔔 WEBHOOK POST TRIGGERED')
-    # print('='*60)
-
-    # print('Webhook recieved: ', request.get_json())
-    
-    # signature = request.headers.get('X-Hub-Signature-256')
-    
-    # if signature and APP_SECRET:
-    #     print(f'Verifying signature... (APP_SECRET set: {bool(APP_SECRET)})')
-    #     if not verify_signature(request.get_data(), signature):
-    #         print('❌ Invalid signature!')
-    #         return 'Forbidden', 403
-    #     print('✅ Signature valid!')
-    # else:
-    #     print(f'⚠️  Skipping verification - signature: {bool(signature)}, APP_SECRET: {bool(APP_SECRET)}')
-
-    # data = request.get_json()
-    # print('Data: ', data)
-    
-    # if data.get('object') == 'user':
-    #     print('📸 Calling Instagram handler...')
-    #     handle_user_webhook(data)
-    # else:
-    #     print(f'⚠️  Unknown object type: {data.get("object")}')
-
-    # print('Returning EVENT_RECEIVED')
-    # print('='*60 + '\n')
     return 'EVENT_RECEIVED', 200
 
-
-
-
-
-# Initialize the service (do this once, maybe in app setup)
-db_service = DBService()
-
-# Posts API routes
-# @app.route("/posts", methods=['GET'])
-# def query_all_posts():
-#     return db_service.get_all_posts()
-
-# @app.route("/posts/<id>", methods=['GET'])
-# def query_post_by_id(id):
-#     return db_service.get_post_by_id(id)
+# ============================================
+# PROTECTED DATA ROUTES
+# ============================================
 
 @app.route("/postlist", methods=['GET'])
-def query_post_list():
-    conn = None
+@token_required
+@with_db_connection(db_service)
+def query_post_list(conn):
+    """Get list of all posts"""
+    data = db_service.get_post_list(conn)
+    return jsonify(data)
 
-    try:
-        # 1. ACQUIRE CONNECTION
-        conn = db_service.get_db_connection()
-        
-        # 2. PASS CONNECTION TO SERVICE METHOD
-        data = db_service.get_post_list(conn)
-        
-        # 3. COMMIT (if applicable, though SELECTs don't need it)
-        conn.commit() 
-        
-        # 4. RETURN RESPONSE
-        return jsonify(data)
-    
-    except Exception as e:
-        # Log the error for debugging
-        print(f"Database error during request: {e}")
-        # Rollback any pending transactions on failure
-        if conn:
-            conn.rollback()
-        # Re-raise the error to let Flask handle the 500 status
-        raise
-        
-    finally:
-        # 5. ENSURE CONNECTION IS CLOSED
-        if conn:
-            conn.close() # <--- THIS IS THE CRITICAL FIX
-
+@app.route("/latest/<count>", methods=['GET'])
+@token_required
+@with_db_connection(db_service)
+def query_latest_activity(conn, count):
+    """Get latest N posts"""
+    data = db_service.get_latest_activity(conn, count)
+    return jsonify(data)
 
 @app.route("/activity", methods=['GET'])
-def query_all_activity():
-    conn = None
-
-    try:
-        # 1. ACQUIRE CONNECTION
-        conn = db_service.get_db_connection()
-        
-        # 2. PASS CONNECTION TO SERVICE METHOD
-        data = db_service.get_all_activity(conn)
-        
-        # 3. COMMIT (if applicable, though SELECTs don't need it)
-        conn.commit() 
-        
-        # 4. RETURN RESPONSE
-        return jsonify(data)
-    
-    except Exception as e:
-        # Log the error for debugging
-        print(f"Database error during request: {e}")
-        # Rollback any pending transactions on failure
-        if conn:
-            conn.rollback()
-        # Re-raise the error to let Flask handle the 500 status
-        raise
-        
-    finally:
-        # 5. ENSURE CONNECTION IS CLOSED
-        if conn:
-            conn.close() # <--- THIS IS THE CRITICAL FIX
-
-@app.route("/activity/latest", methods=['GET'])
-def query_latest_activity():
-    conn = None
-
-    try:
-        # 1. ACQUIRE CONNECTION
-        conn = db_service.get_db_connection()
-        
-        # 2. PASS CONNECTION TO SERVICE METHOD
-        data = db_service.get_latest_activity(conn)
-        
-        # 3. COMMIT (if applicable, though SELECTs don't need it)
-        conn.commit() 
-        
-        # 4. RETURN RESPONSE
-        return jsonify(data)
-    
-    except Exception as e:
-        # Log the error for debugging
-        print(f"Database error during request: {e}")
-        # Rollback any pending transactions on failure
-        if conn:
-            conn.rollback()
-        # Re-raise the error to let Flask handle the 500 status
-        raise
-        
-    finally:
-        # 5. ENSURE CONNECTION IS CLOSED
-        if conn:
-            conn.close() # <--- THIS IS THE CRITICAL FIX
+@token_required
+@with_db_connection(db_service)
+def query_all_activity(conn):
+    """Get all post activity"""
+    data = db_service.get_all_activity(conn)
+    return jsonify(data)
 
 @app.route("/activity/<id>", methods=['GET'])
-def query_activity_by_id(id):
-    conn = None
-
-    try:
-        # 1. ACQUIRE CONNECTION
-        conn = db_service.get_db_connection()
-        
-        # 2. PASS CONNECTION TO SERVICE METHOD
-        print("id: ", id)
-        data = db_service.get_activity_by_id(conn, id)
-        
-        # 3. COMMIT (if applicable, though SELECTs don't need it)
-        conn.commit() 
-        
-        # 4. RETURN RESPONSE
-        return jsonify(data)
-    
-    except Exception as e:
-        # Log the error for debugging
-        print(f"Database error during request: {e}")
-        # Rollback any pending transactions on failure
-        if conn:
-            conn.rollback()
-        # Re-raise the error to let Flask handle the 500 status
-        raise
-        
-    finally:
-        # 5. ENSURE CONNECTION IS CLOSED
-        if conn:
-            conn.close() # <--- THIS IS THE CRITICAL FIX
-    # return db_service.get_activity_by_id(id)
-
-# @app.route("/followers", methods=['GET'])
-# def query_follower_counts():
-#     return db_service.get_follower_counts()
-
-# @app.route("/followers/now", methods=['GET'])
-# def query_latest_followers():
-#     return db_service.get_latest_followers()
+@token_required
+@with_db_connection(db_service)
+def query_activity_by_id(conn, id):
+    """Get activity for specific post"""
+    data = db_service.get_activity_by_id(conn, id)
+    return jsonify(data)
 
 @app.route("/execsummary", methods=['GET'])
-def query_exec_summary_data():
-    conn = None
+@token_required
+@with_db_connection(db_service)
+def query_exec_summary_data(conn):
+    """Get executive summary data"""
+    data = db_service.get_exec_summary_data(conn)
+    return jsonify(data)
 
+# ============================================
+# AUTHENTICATION ROUTES
+# ============================================
+
+@app.route('/auth/login', methods=['POST'])
+def login():
+    """Login - returns access and refresh tokens"""
     try:
-        # 1. ACQUIRE CONNECTION
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        
+        if not username or not password:
+            return jsonify({'message': 'Username and password are required'}), 400
+        
+        conn = db_service.get_db_connection()
+        try:
+            user = db_service.get_user_by_username(conn, username)
+            
+            if not user or not AuthService.verify_password(password, user['password_hash']):
+                return jsonify({'message': 'Invalid username or password'}), 401
+            
+            token_data = {'user_id': user['id'], 'username': user['username']}
+            access_token = AuthService.create_access_token(token_data)
+            refresh_token = AuthService.create_refresh_token(token_data)
+            
+            return jsonify({
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'user': {'id': user['id'], 'username': user['username'], 'email': user['email']}
+            }), 200
+        finally:
+            conn.close()
+            
+    except Exception as e:
+        print(f"Login error: {str(e)}")
+        return jsonify({'message': 'An error occurred during login'}), 500
+
+@app.route('/auth/refresh', methods=['POST'])
+def refresh():
+    """Exchange refresh token for new access token"""
+    try:
+        data = request.get_json()
+        refresh_token = data.get('refresh_token')
+        
+        if not refresh_token:
+            return jsonify({'message': 'Refresh token is required'}), 400
+        
+        payload = AuthService.decode_token(refresh_token, token_type='refresh')
+        if payload is None:
+            return jsonify({'message': 'Invalid or expired refresh token'}), 401
+        
+        new_token_data = {'user_id': payload['user_id'], 'username': payload['username']}
+        new_access_token = AuthService.create_access_token(new_token_data)
+        
+        return jsonify({'access_token': new_access_token}), 200
+        
+    except Exception as e:
+        print(f"Refresh error: {str(e)}")
+        return jsonify({'message': 'An error occurred during token refresh'}), 500
+
+@app.route('/auth/register', methods=['POST'])
+def register():
+    """Create new user account"""
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
+        
+        if not username or not email or not password:
+            return jsonify({'message': 'Username, email, and password are required'}), 400
+        
+        if len(password) < 8:
+            return jsonify({'message': 'Password must be at least 8 characters'}), 400
+        
+        password_hash = AuthService.hash_password(password)
         conn = db_service.get_db_connection()
         
-        # 2. PASS CONNECTION TO SERVICE METHOD
-        data = db_service.get_exec_summary_data(conn)
-        
-        # 3. COMMIT (if applicable, though SELECTs don't need it)
-        conn.commit() 
-        
-        # 4. RETURN RESPONSE
-        return jsonify(data)
-    
+        try:
+            new_user = db_service.create_user(conn, username, email, password_hash)
+            return jsonify({
+                'message': 'User created successfully',
+                'user': {'id': new_user['id'], 'username': new_user['username'], 'email': new_user['email']}
+            }), 201
+            
+        except Exception as db_error:
+            if 'duplicate key' in str(db_error).lower():
+                return jsonify({'message': 'Username or email already exists'}), 409
+            raise
+        finally:
+            conn.close()
+            
     except Exception as e:
-        # Log the error for debugging
-        print(f"Database error during request: {e}")
-        # Rollback any pending transactions on failure
-        if conn:
-            conn.rollback()
-        # Re-raise the error to let Flask handle the 500 status
-        raise
-        
-    finally:
-        # 5. ENSURE CONNECTION IS CLOSED
-        if conn:
-            conn.close() # <--- THIS IS THE CRITICAL FIX
+        print(f"Registration error: {str(e)}")
+        return jsonify({'message': 'An error occurred during registration'}), 500
 
-    # return db_service.get_exec_summary_data()
+@app.route('/auth/verify', methods=['GET'])
+@token_required
+def verify_token():
+    """Verify if access token is valid"""
+    return jsonify({'valid': True, 'user': request.current_user}), 200
 
+# ============================================
+# SERVER STARTUP
+# ============================================
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=PORT, debug=True)

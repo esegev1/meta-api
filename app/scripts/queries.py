@@ -49,6 +49,45 @@ def query_builder(name):
             ORDER BY
                 a.timestamp DESC;
         """
+    elif name == "last_x_posts":
+        return """
+            WITH last_x_posts AS (
+                SELECT
+                    id,
+                    post_timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York' post_timestamp,
+                    media_product_type,
+                    short_caption,
+                    trial_reel
+                FROM post_metadata
+                ORDER BY 
+                    post_timestamp DESC
+                LIMIT %s
+            ), 
+            latest_post_activity AS (
+                SELECT DISTINCT ON (a.id)               
+                    a.id,                   
+                    a.timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York'  AS localized_timestamp,
+                    a.views,
+                    a.reach,
+                    a.likes,                       
+                    a.comments,
+                    a.saves,
+                    a.shares
+                FROM
+                    post_activity a
+                LEFT JOIN post_metadata b
+                ON a.id = b.id
+                    ORDER BY a.id,
+                        a.timestamp DESC
+            )
+            SELECT
+            c.*,
+            d.*
+            FROM last_x_posts c
+            LEFT JOIN latest_post_activity d
+            ON c.id=d.id
+            ;
+        """
     elif name == "latest_post_activity":
         return """
             WITH last_x_posts AS (
