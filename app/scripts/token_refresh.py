@@ -34,7 +34,7 @@ def check_and_refresh_token():
     if expires_at > 0:
         days_until_expiry = (expires_at - datetime.now().timestamp()) / 86400
         
-        if days_until_expiry < 200:
+        if days_until_expiry < 10:
             print(f"Token expires in {days_until_expiry:.1f} days. Refreshing...")
             
             # Exchange for new long-lived token
